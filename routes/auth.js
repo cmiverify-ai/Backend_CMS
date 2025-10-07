@@ -22,7 +22,53 @@ const validateLogin = [
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required')
 ];
+// @route   POST /api/auth/register
+// @desc    Register a new user
+// @access  Public
+router.post("/register", validateRegister, async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+    }
 
+    const { name, email, password, phone, role = "user" } = req.body;
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: "User already exists with this email",
+        });
+    }
+
+    const user = new User({ name, email, password, phone, role });
+    await user.save();
+
+    const token = generateToken(user);
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Omit sensitive data from the response
+    const userResponse = user.toJSON();
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      data: { token, user: userResponse },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 // @route   POST /api/auth/login
 // @desc    Admin login
 // @access  Public
@@ -214,5 +260,6 @@ router.post('/logout', authMiddleware, (req, res) => {
     message: 'Logged out successfully'
   });
 });
+
 
 module.exports = router;
