@@ -17,13 +17,23 @@ const generateToken = (user) => {
   );
 };
 
-// Validation middleware
+// --- Validation Middlewares ---
+
 const validateLogin = [
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required')
 ];
+
+const validateRegister = [
+    body('name').notEmpty().withMessage('Name is required'),
+    body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+    body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role specified')
+];
+
+
 // @route   POST /api/auth/register
-// @desc    Register a new user
+// @desc    Register a new user (for admins)
 // @access  Public
 router.post("/register", validateRegister, async (req, res, next) => {
   try {
@@ -38,7 +48,7 @@ router.post("/register", validateRegister, async (req, res, next) => {
         });
     }
 
-    const { name, email, password, phone, role = "user" } = req.body;
+    const { name, email, password, phone, role = "admin" } = req.body; // Default role to admin for this registration form
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
@@ -69,6 +79,7 @@ router.post("/register", validateRegister, async (req, res, next) => {
     next(error);
   }
 });
+
 // @route   POST /api/auth/login
 // @desc    Admin login
 // @access  Public
